@@ -2,6 +2,7 @@ import { getPhoneApps } from './src/core/app-registry.js';
 import { loadPhoneSettings, saveWindowPosition } from './src/core/settings.js';
 import { createPhoneShell } from './src/ui/phone-shell.js';
 import { createMessageService } from './src/messages/message-service.js';
+import { installPhoneMessagePromptInjection } from './src/messages/prompt-injection.js';
 
 const EXTENSION_NAME = 'Phone';
 const MENU_ITEM_ID = 'phone-extension-menu-item';
