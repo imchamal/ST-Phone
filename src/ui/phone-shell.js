@@ -104,14 +104,10 @@ export function createPhoneShell(options) {
                                 <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
                             </button>
                             <strong class="phone-ext__app-title"></strong>
-                            <button type="button" class="phone-ext__nav-button" data-phone-action="home" aria-label="Home">
-                                <i class="fa-solid fa-house" aria-hidden="true"></i>
-                            </button>
                         </header>
                         <div class="phone-ext__placeholder"></div>
                     </section>
                 </main>
-                <button type="button" class="phone-ext__home-indicator" data-phone-action="home" aria-label="Home"></button>
             </div>
         </div>
     `;
@@ -126,7 +122,6 @@ export function createPhoneShell(options) {
     const statusTime = panel.querySelector('.phone-ext__status-time');
     const homeTime = panel.querySelector('.phone-ext__home-time');
     const homeDate = panel.querySelector('.phone-ext__home-date');
-    const screen = panel.querySelector('.phone-ext__screen');
 
     let clockTimer = null;
     let dragState = null;
@@ -166,7 +161,6 @@ export function createPhoneShell(options) {
     function showHome() {
         homeScreen.hidden = false;
         appView.hidden = true;
-        screen.classList.remove('phone-ext__screen--app-open');
         appTitle.textContent = '';
         placeholder.replaceChildren();
     }
@@ -192,7 +186,6 @@ export function createPhoneShell(options) {
         appTitle.textContent = app.name;
         homeScreen.hidden = true;
         appView.hidden = false;
-        screen.classList.add('phone-ext__screen--app-open');
         appView.querySelector('[data-phone-action="back"]')?.focus({ preventScroll: true });
     }
 
@@ -319,9 +312,9 @@ export function createPhoneShell(options) {
         const action = actionButton?.dataset.phoneAction;
         if (action === 'close') {
             close();
-        } else if (action === 'home' || action === 'back') {
-            showHome();
-        }
+            } else if (action === 'home' || action === 'back') {
+                showHome();
+            }
     });
 
     document.addEventListener('keydown', (event) => {
