@@ -3,6 +3,7 @@ import { loadPhoneSettings, saveWindowPosition } from './src/core/settings.js';
 import { createPhoneShell } from './src/ui/phone-shell.js';
 import { createMessageService } from './src/messages/message-service.js';
 import { installPhoneMessagePromptInjection } from './src/messages/prompt-injection.js';
+import { createMessagesAppRenderer } from './src/ui/messages-app.js';
 
 const EXTENSION_NAME = 'Phone';
 const MENU_ITEM_ID = 'phone-extension-menu-item';
@@ -108,9 +109,14 @@ async function initializePhone() {
     messageService = createMessageService();
     messageService.start();
 
+    const appRenderers = {
+        messages: createMessagesAppRenderer(messageService),
+    };
+
     phoneShell = createPhoneShell({
         id: PANEL_ID,
         apps,
+        appRenderers,
         settings,
         onPositionChange: saveWindowPosition,
         returnFocusTo: menuItem,

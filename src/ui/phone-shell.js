@@ -55,7 +55,14 @@ function formatHomeDate(date) {
  * }} options
  */
 export function createPhoneShell(options) {
-    const { id, apps, settings, onPositionChange, returnFocusTo } = options;
+    const {
+        id,
+        apps,
+        appRenderers = {},
+        settings,
+        onPositionChange,
+        returnFocusTo,
+    } = options;
     const appMap = new Map(apps.map((app) => [app.id, app]));
     const mediaQuery = window.matchMedia(MOBILE_QUERY);
 
@@ -105,7 +112,7 @@ export function createPhoneShell(options) {
                             </button>
                             <strong class="phone-ext__app-title"></strong>
                         </header>
-                        <div class="phone-ext__placeholder"></div>
+                        <div class="phone-ext__app-content"></div>
                     </section>
                 </main>
             </div>
@@ -118,7 +125,7 @@ export function createPhoneShell(options) {
     const appGrid = panel.querySelector('.phone-ext__app-grid');
     const dock = panel.querySelector('.phone-ext__dock');
     const appTitle = panel.querySelector('.phone-ext__app-title');
-    const placeholder = panel.querySelector('.phone-ext__placeholder');
+    const appContent = panel.querySelector('.phone-ext__app-content');
     const statusTime = panel.querySelector('.phone-ext__status-time');
     const homeTime = panel.querySelector('.phone-ext__home-time');
     const homeDate = panel.querySelector('.phone-ext__home-date');
@@ -126,6 +133,7 @@ export function createPhoneShell(options) {
 
     let clockTimer = null;
     let dragState = null;
+    let activeAppController = null;
 
     for (const app of apps) {
         const target = app.location === 'dock' ? dock : appGrid;
@@ -159,20 +167,26 @@ export function createPhoneShell(options) {
         clockTimer = null;
     }
 
+    function destroyActiveApp() {
+        activeAppController?.destroy?.();
+        activeAppController = null;
+    }
+
+    function resetAppContent() {
+        appContent.className = 'phone-ext__app-content';
+        appContent.replaceChildren();
+    }
+
     function showHome() {
+        destroyActiveApp();
         homeScreen.hidden = false;
         appView.hidden = true;
         screen.classList.remove('phone-ext__screen--app-open');
         appTitle.textContent = '';
-        placeholder.replaceChildren();
+        resetAppContent();
     }
 
-    function openApp(appId) {
-        const app = appMap.get(appId);
-        if (!app) {
-            return;
-        }
-
+    function renderPlaceholder(app) {
         const iconBox = document.createElement('span');
         iconBox.className = 'phone-ext__placeholder-icon';
         iconBox.style.setProperty('--phone-app-color', app.color);
@@ -182,14 +196,50 @@ export function createPhoneShell(options) {
         heading.textContent = app.name;
 
         const description = document.createElement('p');
-        description.textContent = '이 앱은 다음 개발 단계에서 연결할 예정이에요.';
+        description.textContent =
+            '이 앱은 다음 개발 단계에서 연결할 예정이에요.';
 
-        placeholder.replaceChildren(iconBox, heading, description);
+        appContent.className =
+            'phone-ext__app-content phone-ext__placeholder';
+        appContent.replaceChildren(
+            iconBox,
+            heading,
+            description,
+        );
+    }
+
+    function openApp(appId) {
+        const app = appMap.get(appId);
+
+        if (!app) {
+            return;
+        }
+
+        destroyActiveApp();
+        resetAppContent();
+
         appTitle.textContent = app.name;
         homeScreen.hidden = true;
         appView.hidden = false;
         screen.classList.add('phone-ext__screen--app-open');
-        appView.querySelector('[data-phone-action="back"]')?.focus({ preventScroll: true });
+
+        const renderer = appRenderers[appId];
+
+        if (typeof renderer === 'function') {
+            activeAppController = renderer({
+                container: appContent,
+
+                setTitle(title) {
+                    appTitle.textContent = title || app.name;
+                },
+            }) ?? null;
+        } else {
+            renderPlaceholder(app);
+        }
+
+        appView
+            .querySelector('[data-phone-action="back"]')
+            ?.focus({ preventScroll: true });
     }
 
     function focusCloseButton() {
@@ -315,9 +365,13 @@ export function createPhoneShell(options) {
         const action = actionButton?.dataset.phoneAction;
         if (action === 'close') {
             close();
-            } else if (action === 'back') {
-                showHome();
+        } else if (action === 'back') {
+            if (activeAppController?.back?.()) {
+                return;
             }
+
+            showHome();
+        }
     });
 
     document.addEventListener('keydown', (event) => {
