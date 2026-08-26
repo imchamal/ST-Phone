@@ -1,7 +1,12 @@
-const PHONE_PROMPT_KEY = 'phone_message_protocol';
+import {
+    eventSource,
+    event_types,
+    extension_prompt_roles,
+    extension_prompt_types,
+    setExtensionPrompt,
+} from '../../../../../../script.js';
 
-const EXTENSION_PROMPT_IN_CHAT = 1;
-const EXTENSION_PROMPT_ROLE_USER = 1;
+const PHONE_PROMPT_KEY = 'phone_message_protocol';
 
 const PHONE_MESSAGE_PROMPT = `
 <phone_message_protocol>
@@ -27,50 +32,77 @@ Rules:
 </phone_message_protocol>
 `.trim();
 
-function hasActiveChat() {
-    const context = SillyTavern.getContext();
+let enabled = false;
+let listenersRegistered = false;
+let refreshTimer = null;
 
-    return (
-        context.characterId !== undefined
-        || Boolean(context.groupId)
-        || context.chat?.length > 0
+function applyPhoneMessagePromptInjection() {
+    if (!enabled) {
+        return;
+    }
+
+    setExtensionPrompt(
+        PHONE_PROMPT_KEY,
+        PHONE_MESSAGE_PROMPT,
+        extension_prompt_types.IN_CHAT,
+        0,
+        false,
+        extension_prompt_roles.USER,
     );
 }
 
-export function installPhoneMessagePromptInjection() {
-    const context = SillyTavern.getContext();
+function schedulePhoneMessagePromptInjection() {
+    window.clearTimeout(refreshTimer);
 
-    if (typeof context.setExtensionPrompt !== 'function') {
-        console.warn('[Phone] setExtensionPrompt is unavailable.');
-        return false;
+    refreshTimer = window.setTimeout(() => {
+        applyPhoneMessagePromptInjection();
+    }, 150);
+}
+
+export function installPhoneMessagePromptInjection() {
+    enabled = true;
+
+    if (!listenersRegistered) {
+        /*
+         * SillyTavern은 채팅을 불러올 때 extension_prompts를
+         * 새 객체로 초기화하므로 이후 다시 등록해야 해요.
+         */
+        eventSource.on(
+            event_types.CHAT_CHANGED,
+            schedulePhoneMessagePromptInjection,
+        );
+
+        /*
+         * 생성 직전에도 다시 등록해서 초기 채팅 로딩 순서나
+         * 다른 확장의 초기화에 의해 삭제된 경우를 복구해요.
+         */
+        eventSource.on(
+            event_types.MESSAGE_SENT,
+            applyPhoneMessagePromptInjection,
+        );
+
+        eventSource.on(
+            event_types.APP_READY,
+            schedulePhoneMessagePromptInjection,
+        );
+
+        listenersRegistered = true;
     }
 
-    context.setExtensionPrompt(
-        PHONE_PROMPT_KEY,
-        PHONE_MESSAGE_PROMPT,
-        EXTENSION_PROMPT_IN_CHAT,
-        0,
-        false,
-        EXTENSION_PROMPT_ROLE_USER,
-        hasActiveChat,
-    );
-
+    applyPhoneMessagePromptInjection();
     return true;
 }
 
 export function removePhoneMessagePromptInjection() {
-    const context = SillyTavern.getContext();
+    enabled = false;
+    window.clearTimeout(refreshTimer);
 
-    if (typeof context.setExtensionPrompt !== 'function') {
-        return;
-    }
-
-    context.setExtensionPrompt(
+    setExtensionPrompt(
         PHONE_PROMPT_KEY,
         '',
-        EXTENSION_PROMPT_IN_CHAT,
+        extension_prompt_types.IN_CHAT,
         0,
         false,
-        EXTENSION_PROMPT_ROLE_USER,
+        extension_prompt_roles.USER,
     );
 }
