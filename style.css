@@ -164,6 +164,17 @@
     background: rgba(0, 0, 0, 0.14);
 }
 
+.phone-ext__screen--app-open .phone-ext__status-bar {
+    color: var(--phone-app-text);
+    background: var(--phone-app-surface);
+    text-shadow: none;
+}
+
+.phone-ext__screen--app-open .phone-ext__mobile-close {
+    color: var(--phone-app-text);
+    background: rgba(32, 34, 42, 0.08);
+}
+
 .phone-ext__content {
     position: relative;
     z-index: 1;
@@ -413,17 +424,6 @@
         color: var(--phone-text);
         border-radius: 50%;
         background: rgba(0, 0, 0, 0.14);
-    }
-
-    .phone-ext__screen--app-open .phone-ext__status-bar {
-        color: var(--phone-app-text);
-        background: var(--phone-app-surface);
-        text-shadow: none;
-    }
-
-    .phone-ext__screen--app-open .phone-ext__mobile-close {
-        color: var(--phone-app-text);
-        background: rgba(32, 34, 42, 0.08);
     }
 
     .phone-ext__home {

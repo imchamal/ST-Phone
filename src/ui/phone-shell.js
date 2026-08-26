@@ -315,7 +315,7 @@ export function createPhoneShell(options) {
         const action = actionButton?.dataset.phoneAction;
         if (action === 'close') {
             close();
-            } else if (action === 'home' || action === 'back') {
+            } else if (action === 'back') {
                 showHome();
             }
     });
