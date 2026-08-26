@@ -1,12 +1,14 @@
 import { getPhoneApps } from './src/core/app-registry.js';
 import { loadPhoneSettings, saveWindowPosition } from './src/core/settings.js';
 import { createPhoneShell } from './src/ui/phone-shell.js';
+import { createMessageService } from './src/messages/message-service.js';
 
 const EXTENSION_NAME = 'Phone';
 const MENU_ITEM_ID = 'phone-extension-menu-item';
 const PANEL_ID = 'phone-extension-panel';
 
 let phoneShell = null;
+let messageService = null;
 
 /**
  * Waits for a SillyTavern UI element that may not exist when the extension script first loads.
@@ -99,6 +101,11 @@ async function initializePhone() {
     const menuItem = createMenuItem(menuContainer);
     const settings = loadPhoneSettings();
     const apps = getPhoneApps();
+
+    messageService = createMessageService();
+    messageService.start();
+
+    installPhoneMessagePromptInjection();
 
     phoneShell = createPhoneShell({
         id: PANEL_ID,
