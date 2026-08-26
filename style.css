@@ -16,15 +16,15 @@
     --phone-frame: #17171b;
     --phone-screen: #29334f;
     position: fixed;
-    top: 50%;
-    left: 50%;
+    top: 50% !important;
+    left: 50% !important;
     width: min(390px, calc(100vw - 24px));
     height: min(780px, calc(100dvh - 24px));
     display: flex;
     flex-direction: column;
     color: var(--phone-text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) !important;
     opacity: 0;
     isolation: isolate;
     filter: drop-shadow(0 24px 38px rgba(0, 0, 0, 0.38));
@@ -41,18 +41,7 @@
 }
 
 .phone-ext__window-bar {
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 7px 0 13px;
-    color: rgba(255, 255, 255, 0.78);
-    background: rgba(20, 20, 24, 0.96);
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    border-bottom: 0;
-    border-radius: 30px 30px 0 0;
-    cursor: grab;
-    touch-action: none;
+    display: none !important;
 }
 
 .phone-ext--dragging .phone-ext__window-bar {
@@ -98,8 +87,7 @@
     padding: 8px;
     background: var(--phone-frame);
     border: 1px solid rgba(255, 255, 255, 0.13);
-    border-top: 0;
-    border-radius: 0 0 31px 31px;
+    border-radius: 31px;
 }
 
 .phone-ext__screen {
@@ -147,7 +135,8 @@
     z-index: 2;
     min-height: 42px;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto 30px;
+    gap: 9px;
     align-items: center;
     padding: 10px 17px 4px;
     font-size: 12px;
@@ -163,7 +152,14 @@
 }
 
 .phone-ext__mobile-close {
-    display: none;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    color: var(--phone-text);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.14);
 }
 
 .phone-ext__content {

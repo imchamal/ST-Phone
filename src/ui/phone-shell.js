@@ -197,8 +197,7 @@ export function createPhoneShell(options) {
     }
 
     function focusCloseButton() {
-        const selector = mediaQuery.matches ? '.phone-ext__mobile-close' : '.phone-ext__window-close';
-        panel.querySelector(selector)?.focus({ preventScroll: true });
+        panel.querySelector('.phone-ext__mobile-close')?.focus({ preventScroll: true });
     }
 
     function clampToViewport(left, top) {
