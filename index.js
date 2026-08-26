@@ -85,6 +85,8 @@ function createMenuItem(menuContainer) {
 }
 
 async function initializePhone() {
+    installPhoneMessagePromptInjection();
+
     if (document.getElementById(PANEL_ID)) {
         return;
     }
@@ -105,8 +107,6 @@ async function initializePhone() {
 
     messageService = createMessageService();
     messageService.start();
-
-    installPhoneMessagePromptInjection();
 
     phoneShell = createPhoneShell({
         id: PANEL_ID,
