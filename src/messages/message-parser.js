@@ -1,5 +1,6 @@
 const HTML_COMMENT_PATTERN = /<!--([\s\S]*?)-->/g;
 const PHONE_SMS_PREFIX = 'phone:sms:';
+const INLINE_CODE_PATTERN = /(?<![\\`])`([^`\r\n]+?)(?<!\\)`(?!`)/g;
 
 function stripReasoningBlocks(source) {
     return String(source ?? '')
@@ -64,6 +65,34 @@ export function parsePhoneMessages(source) {
             sender,
             text,
             thread: thread || null,
+        });
+    }
+
+    return results;
+}
+
+/**
+ * 유저 RP 메시지에서 단일 백틱 인라인 코드를 추출해요.
+ * 코드 블록과 이스케이프된 백틱은 제외해요.
+ */
+export function parseUserPhoneReplies(source) {
+    const content = stripReasoningBlocks(source)
+        .replace(HTML_COMMENT_PATTERN, '');
+
+    const results = [];
+
+    INLINE_CODE_PATTERN.lastIndex = 0;
+
+    for (const match of content.matchAll(INLINE_CODE_PATTERN)) {
+        const text = String(match[1] ?? '').trim();
+
+        if (!text) {
+            continue;
+        }
+
+        results.push({
+            text,
+            sourceCodeIndex: results.length,
         });
     }
 

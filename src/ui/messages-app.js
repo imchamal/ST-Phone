@@ -135,9 +135,21 @@ function renderConversationList(
         const preview = createElement(
             'span',
             'phone-ext__thread-preview',
+
             conversation.isGroup
-                ? `${conversation.lastMessage?.senderName || 'Unknown'}: ${conversation.lastMessage?.text || ''}`
-                : (conversation.lastMessage?.text || ''),
+                ? `${
+                    conversation.lastMessage?.direction === 'outgoing'
+                        ? '나'
+                        : (
+                            conversation.lastMessage?.senderName ||
+                            'Unknown'
+                        )
+                }: ${
+                    conversation.lastMessage?.text || ''
+                }`
+                : (
+                    conversation.lastMessage?.text || ''
+                ),
         );
         content.append(name, preview);
 
@@ -209,12 +221,27 @@ function renderConversation(container, conversation) {
     );
 
     for (const message of conversation.messages) {
+        const isOutgoing =
+            message.direction === 'outgoing';
+
         const row = createElement(
             'div',
-            'phone-ext__message-row phone-ext__message-row--incoming',
+            [
+                'phone-ext__message-row',
+                isOutgoing
+                    ? 'phone-ext__message-row--outgoing'
+                    : 'phone-ext__message-row--incoming',
+            ].join(' '),
         );
 
-        if (conversation.isGroup) {
+        /*
+        * 단체방에서 캐릭터가 보낸 문자만
+        * 말풍선 위에 발신자 이름을 표시해요.
+        */
+        if (
+            conversation.isGroup &&
+            !isOutgoing
+        ) {
             row.appendChild(createElement(
                 'span',
                 'phone-ext__message-sender',
@@ -227,6 +254,7 @@ function renderConversation(container, conversation) {
             'phone-ext__message-bubble',
             message.text,
         );
+
         const time = createElement(
             'time',
             'phone-ext__message-time',

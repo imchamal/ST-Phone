@@ -585,6 +585,10 @@
     margin-bottom: 11px;
 }
 
+.phone-ext__message-row--outgoing {
+    align-items: flex-end;
+}
+
 .phone-ext__message-sender {
     margin: 0 0 4px 6px;
     color: #686b75;
@@ -604,10 +608,23 @@
     border-radius: 17px 17px 17px 5px;
 }
 
+.phone-ext__message-row--outgoing
+.phone-ext__message-bubble {
+    color: #fff;
+    background: #2f80ed;
+    border-radius: 17px 17px 5px 17px;
+}
+
 .phone-ext__message-time {
     margin: 4px 0 0 6px;
     color: #8b8e97;
     font-size: 9px;
+}
+
+.phone-ext__message-row--outgoing
+.phone-ext__message-time {
+    margin-right: 6px;
+    margin-left: 0;
 }
 
 .phone-ext__messages-readonly {

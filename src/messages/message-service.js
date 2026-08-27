@@ -1,8 +1,11 @@
-import { parsePhoneMessages } from './message-parser.js';
+import {
+    parsePhoneMessages,
+    parseUserPhoneReplies,
+} from './message-parser.js';
 
 const MESSAGE_EXTRA_KEY = 'phoneMessages';
 const CHAT_METADATA_KEY = 'phoneMessages';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const EMPTY_SNAPSHOT = Object.freeze({
     chatId: null,
@@ -117,9 +120,8 @@ function resolveConversation(contact, threadToken) {
     };
 }
 
-function isCharacterMessage(message) {
+function isPhoneSourceMessage(message) {
     return Boolean(message)
-        && message.is_user !== true
         && message.is_system !== true
         && message.extra?.isSmallSys !== true
         && message.extra?.type !== 'narrator';
@@ -140,15 +142,13 @@ function syncCurrentSwipeExtra(message) {
     swipeInfo.extra = structuredClone(message.extra ?? {});
 }
 
-function syncMessage(context, message) {
-    if (!isCharacterMessage(message)) {
-        return false;
-    }
-
-    const parsedMessages = parsePhoneMessages(message.mes);
-    const previous = message.extra?.[MESSAGE_EXTRA_KEY];
-
-    if (parsedMessages.length === 0) {
+function updateStoredEvents(
+    context,
+    message,
+    previous,
+    events,
+) {
+    if (events.length === 0) {
         if (!previous) {
             return false;
         }
@@ -160,45 +160,11 @@ function syncMessage(context, message) {
 
     message.extra ??= {};
 
-    const previousEvents = Array.isArray(previous?.events)
-        ? previous.events
-        : [];
-
-    const sentAt = getTimestamp(context, message.send_date);
-
-    const events = parsedMessages.map((parsed, order) => {
-        const contact = resolveContact(
-            context,
-            message,
-            parsed.sender,
-        );
-
-        const conversation = resolveConversation(
-            contact,
-            parsed.thread,
-        );
-
-        return {
-            id: previousEvents[order]?.id || createId(context),
-
-            conversationId: conversation.id,
-            conversationName: conversation.name,
-            isGroup: conversation.isGroup,
-
-            contactId: contact.id,
-            senderName: contact.name,
-            avatar: contact.avatar,
-
-            thread: parsed.thread,
-            text: parsed.text,
-            sentAt,
-            order,
-        };
-    });
-
     const next = {
         schemaVersion: SCHEMA_VERSION,
-        sourceId: previous?.sourceId || createId(context),
+        sourceId:
+            previous?.sourceId ||
+            createId(context),
         sourceSwipeId: Number.isInteger(message.swipe_id)
             ? message.swipe_id
             : 0,
@@ -213,6 +179,245 @@ function syncMessage(context, message) {
     syncCurrentSwipeExtra(message);
 
     return true;
+}
+
+function syncCharacterMessage(context, message) {
+    const parsedMessages = parsePhoneMessages(message.mes);
+    const previous =
+        message.extra?.[MESSAGE_EXTRA_KEY];
+
+    const previousEvents = Array.isArray(previous?.events)
+        ? previous.events
+        : [];
+
+    const sentAt = getTimestamp(
+        context,
+        message.send_date,
+    );
+
+    const events = parsedMessages.map(
+        (parsed, order) => {
+            const contact = resolveContact(
+                context,
+                message,
+                parsed.sender,
+            );
+
+            const conversation = resolveConversation(
+                contact,
+                parsed.thread,
+            );
+
+            return {
+                id:
+                    previousEvents[order]?.id ||
+                    createId(context),
+
+                direction: 'incoming',
+
+                conversationId: conversation.id,
+                conversationName: conversation.name,
+                isGroup: conversation.isGroup,
+
+                contactId: contact.id,
+                senderName: contact.name,
+                avatar: contact.avatar,
+
+                thread: parsed.thread,
+                text: parsed.text,
+                sentAt,
+                order,
+            };
+        },
+    );
+
+    return updateStoredEvents(
+        context,
+        message,
+        previous,
+        events,
+    );
+}
+
+/**
+ * 바로 앞 캐릭터 응답의 문자방을 답장 대상으로 사용해요.
+ *
+ * 하나의 응답에 서로 다른 대화방이 섞여 있으면
+ * 답장 대상을 확정할 수 없으므로 null을 반환해요.
+ */
+function getReplyTarget(context, messageIndex) {
+    const previousMessage =
+        context.chat?.[messageIndex - 1];
+
+    if (
+        !isPhoneSourceMessage(previousMessage) ||
+        previousMessage.is_user === true
+    ) {
+        return null;
+    }
+
+    const previousEvents =
+        previousMessage.extra?.[MESSAGE_EXTRA_KEY]?.events;
+
+    if (!Array.isArray(previousEvents)) {
+        return null;
+    }
+
+    const incomingEvents = previousEvents.filter(
+        (event) => event?.direction !== 'outgoing',
+    );
+
+    const conversationIds = new Set(
+        incomingEvents
+            .map((event) => (
+                event?.conversationId ||
+                event?.contactId
+            ))
+            .filter(Boolean),
+    );
+
+    /*
+     * 직전 응답에 문자방이 정확히 하나일 때만
+     * 유저 인라인 코드를 답장으로 기록해요.
+     */
+    if (conversationIds.size !== 1) {
+        return null;
+    }
+
+    const [conversationId] = conversationIds;
+
+    const targetEvent = [...incomingEvents]
+        .reverse()
+        .find((event) => (
+            event?.conversationId ||
+            event?.contactId
+        ) === conversationId);
+
+    if (!targetEvent) {
+        return null;
+    }
+
+    const isGroup =
+        targetEvent.isGroup === true ||
+        Boolean(targetEvent.thread);
+
+    const conversationName =
+        targetEvent.conversationName ||
+        targetEvent.thread ||
+        targetEvent.senderName ||
+        'Unknown';
+
+    return {
+        conversationId,
+        conversationName,
+        isGroup,
+
+        thread: targetEvent.thread || null,
+
+        contactId:
+            targetEvent.contactId ||
+            conversationId,
+
+        recipientName: isGroup
+            ? conversationName
+            : (
+                targetEvent.senderName ||
+                conversationName
+            ),
+    };
+}
+
+function syncUserMessage(
+    context,
+    message,
+    messageIndex,
+) {
+    const previous =
+        message.extra?.[MESSAGE_EXTRA_KEY];
+
+    const target = getReplyTarget(
+        context,
+        messageIndex,
+    );
+
+    /*
+     * 답장 대상을 확정할 수 있을 때만
+     * 유저의 인라인 코드를 파싱해요.
+     */
+    const parsedReplies = target
+        ? parseUserPhoneReplies(message.mes)
+        : [];
+
+    const previousEvents = Array.isArray(previous?.events)
+        ? previous.events
+        : [];
+
+    const sentAt = getTimestamp(
+        context,
+        message.send_date,
+    );
+
+    const senderName = String(
+        message.name ||
+        context?.name1 ||
+        'You',
+    ).trim() || 'You';
+
+    const events = parsedReplies.map(
+        (parsed, order) => ({
+            id:
+                previousEvents[order]?.id ||
+                createId(context),
+
+            direction: 'outgoing',
+
+            conversationId: target.conversationId,
+            conversationName: target.conversationName,
+            isGroup: target.isGroup,
+
+            contactId: target.contactId,
+            senderName,
+            recipientName: target.recipientName,
+            avatar: null,
+
+            thread: target.thread,
+            text: parsed.text,
+            sourceCodeIndex: parsed.sourceCodeIndex,
+
+            sentAt,
+            order,
+        }),
+    );
+
+    return updateStoredEvents(
+        context,
+        message,
+        previous,
+        events,
+    );
+}
+
+function syncMessage(
+    context,
+    message,
+    messageIndex,
+) {
+    if (!isPhoneSourceMessage(message)) {
+        return false;
+    }
+
+    if (message.is_user === true) {
+        return syncUserMessage(
+            context,
+            message,
+            messageIndex,
+        );
+    }
+
+    return syncCharacterMessage(
+        context,
+        message,
+    );
 }
 
 function getMetadataState(context) {
@@ -301,17 +506,39 @@ function buildSnapshot(context) {
                 );
             }
 
+            /*
+            * 기존 이벤트에는 direction이 없으므로
+            * 기본값을 incoming으로 취급해요.
+            */
+            const direction =
+                event.direction === 'outgoing'
+                    ? 'outgoing'
+                    : 'incoming';
+
             const item = {
                 id: event.id,
                 text: event.text,
+                direction,
+
                 sentAt: Number.isFinite(event.sentAt)
                     ? event.sentAt
                     : null,
+
                 sourceMessageIndex,
                 sourceOrder,
-                senderName: event.senderName || 'Unknown',
-                avatar: event.avatar || null,
-                isRead: readIds.has(event.id),
+
+                senderName:
+                    event.senderName || 'Unknown',
+
+                avatar:
+                    event.avatar || null,
+
+                /*
+                * 내가 보낸 문자는 항상 읽은 상태예요.
+                */
+                isRead:
+                    direction === 'outgoing' ||
+                    readIds.has(event.id),
             };
 
             /*
@@ -336,7 +563,10 @@ function buildSnapshot(context) {
             conversation.messages.push(item);
             conversation.lastMessage = item;
 
-            if (!item.isRead) {
+            if (
+                item.direction === 'incoming' &&
+                !item.isRead
+            ) {
                 conversation.unreadCount += 1;
             }
         });
@@ -435,8 +665,16 @@ export function createMessageService() {
 
         let changed = false;
 
-        for (const message of context.chat) {
-            changed = syncMessage(context, message) || changed;
+        for (
+            let messageIndex = 0;
+            messageIndex < context.chat.length;
+            messageIndex += 1
+        ) {
+            changed = syncMessage(
+                context,
+                context.chat[messageIndex],
+                messageIndex,
+            ) || changed;
         }
 
         let snapshot = buildSnapshot(context);
@@ -488,6 +726,7 @@ export function createMessageService() {
         }
 
         const eventNames = [
+            'MESSAGE_SENT',
             'MESSAGE_RECEIVED',
             'MESSAGE_EDITED',
             'MESSAGE_UPDATED',
