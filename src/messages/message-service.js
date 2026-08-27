@@ -2,7 +2,7 @@ import { parsePhoneMessages } from './message-parser.js';
 
 const MESSAGE_EXTRA_KEY = 'phoneMessages';
 const CHAT_METADATA_KEY = 'phoneMessages';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const EMPTY_SNAPSHOT = Object.freeze({
     chatId: null,
@@ -97,6 +97,26 @@ function resolveContact(context, message, senderToken) {
     };
 }
 
+function resolveConversation(contact, threadToken) {
+    const threadName = String(threadToken ?? '').trim();
+
+    if (threadName) {
+        return {
+            id: `thread:${normalizeContactId(threadName)}`,
+            name: threadName,
+            avatar: null,
+            isGroup: true,
+        };
+    }
+
+    return {
+        id: contact.id,
+        name: contact.name,
+        avatar: contact.avatar,
+        isGroup: false,
+    };
+}
+
 function isCharacterMessage(message) {
     return Boolean(message)
         && message.is_user !== true
@@ -153,11 +173,23 @@ function syncMessage(context, message) {
             parsed.sender,
         );
 
+        const conversation = resolveConversation(
+            contact,
+            parsed.thread,
+        );
+
         return {
             id: previousEvents[order]?.id || createId(context),
+
+            conversationId: conversation.id,
+            conversationName: conversation.name,
+            isGroup: conversation.isGroup,
+
             contactId: contact.id,
             senderName: contact.name,
             avatar: contact.avatar,
+
+            thread: parsed.thread,
             text: parsed.text,
             sentAt,
             order,
@@ -227,26 +259,44 @@ function buildSnapshot(context) {
         }
 
         storedEvents.forEach((event, sourceOrder) => {
-            if (!event?.id || !event?.contactId || !event?.text) {
+            /*
+             * 신규 이벤트는 conversationId를 사용해요.
+             * 기존 개인 문자 데이터는 contactId로 호환해요.
+             */
+            const conversationId =
+                event?.conversationId || event?.contactId;
+
+            if (!event?.id || !conversationId || !event?.text) {
                 return;
             }
 
             let conversation = conversations.get(
-                event.contactId,
+                conversationId,
             );
 
             if (!conversation) {
+                const isGroup =
+                    event.isGroup === true ||
+                    Boolean(event.thread);
+
                 conversation = {
-                    id: event.contactId,
-                    name: event.senderName || 'Unknown',
-                    avatar: event.avatar || null,
+                    id: conversationId,
+                    name:
+                        event.conversationName ||
+                        event.thread ||
+                        event.senderName ||
+                        'Unknown',
+                    avatar: isGroup
+                        ? null
+                        : (event.avatar || null),
+                    isGroup,
                     messages: [],
                     unreadCount: 0,
                     lastMessage: null,
                 };
 
                 conversations.set(
-                    event.contactId,
+                    conversationId,
                     conversation,
                 );
             }
@@ -259,14 +309,29 @@ function buildSnapshot(context) {
                     : null,
                 sourceMessageIndex,
                 sourceOrder,
+                senderName: event.senderName || 'Unknown',
+                avatar: event.avatar || null,
                 isRead: readIds.has(event.id),
             };
 
+            /*
+             * 단체방 이름은 thread를 유지하고,
+             * 개인방 이름만 발신자 이름으로 갱신해요.
+             */
             conversation.name =
-                event.senderName || conversation.name;
+                event.conversationName ||
+                event.thread ||
+                (
+                    conversation.isGroup
+                        ? conversation.name
+                        : event.senderName
+                ) ||
+                conversation.name;
 
-            conversation.avatar =
-                event.avatar || conversation.avatar;
+            if (!conversation.isGroup) {
+                conversation.avatar =
+                    event.avatar || conversation.avatar;
+            }
 
             conversation.messages.push(item);
             conversation.lastMessage = item;
@@ -277,19 +342,20 @@ function buildSnapshot(context) {
         });
     });
 
-    const sortedConversations = [...conversations.values()]
-        .sort((a, b) => {
-            const aLast = a.lastMessage;
-            const bLast = b.lastMessage;
+    const sortedConversations = [
+        ...conversations.values(),
+    ].sort((a, b) => {
+        const aLast = a.lastMessage;
+        const bLast = b.lastMessage;
 
-            return (
-                bLast?.sourceMessageIndex
-                - aLast?.sourceMessageIndex
-            ) || (
-                bLast?.sourceOrder
-                - aLast?.sourceOrder
-            );
-        });
+        return (
+            bLast?.sourceMessageIndex -
+            aLast?.sourceMessageIndex
+        ) || (
+            bLast?.sourceOrder -
+            aLast?.sourceOrder
+        );
+    });
 
     return {
         chatId: context.chatId,

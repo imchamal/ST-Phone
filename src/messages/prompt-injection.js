@@ -17,11 +17,17 @@ When the current reply depicts an actual digital text message arriving on {{user
 Use exactly this format:
 <!--phone:sms:{"from":"Sender Name","to":"user","text":"Exact message text"}-->
 
+For a message sent inside a named multi-participant group chat, add "thread":
+<!--phone:sms:{"from":"Sender Name","to":"user","thread":"Group Chat Name","text":"Exact message text"}-->
+
 Rules:
 - Only record messages actually sent to {{user}}'s phone.
 - "to" must always be the literal string "user".
 - "from" must contain the sender's displayed name.
 - "text" must contain the exact message content.
+- Omit "thread" for direct one-to-one messages.
+- Include "thread" only when the message belongs to a shared multi-participant group chat.
+- Every message in the same group chat must use the exact same "thread" value, even when the sender changes.
 - Use valid single-line JSON with double quotes.
 - Output one comment per phone message, in chronological order.
 - Keep the normal visible roleplay text unchanged.

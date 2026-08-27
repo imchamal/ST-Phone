@@ -49,6 +49,7 @@ export function parsePhoneMessages(source) {
 
         const sender = String(payload.from ?? '').trim();
         const text = String(payload.text ?? '').trim();
+        const thread = String(payload.thread ?? '').trim();
         const recipient = String(payload.to ?? 'user').trim().toLowerCase();
 
         if (!sender || !text) {
@@ -62,6 +63,7 @@ export function parsePhoneMessages(source) {
         results.push({
             sender,
             text,
+            thread: thread || null,
         });
     }
 

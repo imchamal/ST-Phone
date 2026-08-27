@@ -135,7 +135,9 @@ function renderConversationList(
         const preview = createElement(
             'span',
             'phone-ext__thread-preview',
-            conversation.lastMessage?.text || '',
+            conversation.isGroup
+                ? `${conversation.lastMessage?.senderName || 'Unknown'}: ${conversation.lastMessage?.text || ''}`
+                : (conversation.lastMessage?.text || ''),
         );
         content.append(name, preview);
 
@@ -211,6 +213,15 @@ function renderConversation(container, conversation) {
             'div',
             'phone-ext__message-row phone-ext__message-row--incoming',
         );
+
+        if (conversation.isGroup) {
+            row.appendChild(createElement(
+                'span',
+                'phone-ext__message-sender',
+                message.senderName,
+            ));
+        }
+
         const bubble = createElement(
             'div',
             'phone-ext__message-bubble',

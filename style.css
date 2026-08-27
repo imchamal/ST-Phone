@@ -585,6 +585,13 @@
     margin-bottom: 11px;
 }
 
+.phone-ext__message-sender {
+    margin: 0 0 4px 6px;
+    color: #686b75;
+    font-size: 10px;
+    font-weight: 650;
+}
+
 .phone-ext__message-bubble {
     max-width: 82%;
     padding: 9px 12px;
