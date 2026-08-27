@@ -4,6 +4,7 @@ import { createPhoneShell } from './src/ui/phone-shell.js';
 import { createMessageService } from './src/messages/message-service.js';
 import { installPhoneMessagePromptInjection } from './src/messages/prompt-injection.js';
 import { createMessagesAppRenderer } from './src/ui/messages-app.js';
+import { createContactsAppRenderer } from './src/ui/contacts-app.js';
 
 const EXTENSION_NAME = 'Phone';
 const MENU_ITEM_ID = 'phone-extension-menu-item';
@@ -110,6 +111,7 @@ async function initializePhone() {
     messageService.start();
 
     const appRenderers = {
+        contacts: createContactsAppRenderer(messageService),
         messages: createMessagesAppRenderer(messageService),
     };
 

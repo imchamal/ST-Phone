@@ -10,6 +10,7 @@ const SCHEMA_VERSION = 3;
 const EMPTY_SNAPSHOT = Object.freeze({
     chatId: null,
     conversations: [],
+    contacts: [],
     totalUnread: 0,
 });
 
@@ -454,6 +455,7 @@ function buildSnapshot(context) {
     const metadata = getMetadataState(context);
     const readIds = new Set(metadata.readEventIds);
     const conversations = new Map();
+    const contacts = new Map();
 
     context.chat.forEach((message, sourceMessageIndex) => {
         const storedEvents =
@@ -515,14 +517,87 @@ function buildSnapshot(context) {
                     ? 'outgoing'
                     : 'incoming';
 
+            const sentAt = Number.isFinite(event.sentAt)
+                ? event.sentAt
+                : null;
+
+            /*
+            * 연락처는 캐릭터가 보낸 문자에서만 파생해요.
+            * 내가 보낸 답장과 단체방 자체는 연락처로 만들지 않아요.
+            */
+            if (
+                direction === 'incoming' &&
+                event.contactId
+            ) {
+                const contactId = String(event.contactId);
+                const isGroup =
+                    event.isGroup === true ||
+                    Boolean(event.thread);
+
+                let contact = contacts.get(contactId);
+
+                if (!contact) {
+                    contact = {
+                        id: contactId,
+                        name: event.senderName || 'Unknown',
+                        avatar: event.avatar || null,
+                        firstSeenAt: sentAt,
+                        lastSeenAt: sentAt,
+                        messageCount: 0,
+                        directConversationId: null,
+                        groups: new Map(),
+                    };
+
+                    contacts.set(contactId, contact);
+                }
+
+                /*
+                * 뒤쪽 메시지일수록 최신 이름과 아바타를 사용해요.
+                */
+                contact.name =
+                    event.senderName || contact.name;
+                contact.avatar =
+                    event.avatar || contact.avatar;
+                contact.messageCount += 1;
+
+                if (Number.isFinite(sentAt)) {
+                    contact.firstSeenAt = Number.isFinite(
+                        contact.firstSeenAt,
+                    )
+                        ? Math.min(contact.firstSeenAt, sentAt)
+                        : sentAt;
+
+                    contact.lastSeenAt = Number.isFinite(
+                        contact.lastSeenAt,
+                    )
+                        ? Math.max(contact.lastSeenAt, sentAt)
+                        : sentAt;
+                }
+
+                if (isGroup) {
+                    const groupId =
+                        event.conversationId ||
+                        `thread:${normalizeContactId(event.thread)}`;
+
+                    contact.groups.set(groupId, {
+                        id: groupId,
+                        name:
+                            event.conversationName ||
+                            event.thread ||
+                            'Group',
+                    });
+                } else {
+                    contact.directConversationId =
+                        event.conversationId || contactId;
+                }
+            }
+
             const item = {
                 id: event.id,
                 text: event.text,
                 direction,
 
-                sentAt: Number.isFinite(event.sentAt)
-                    ? event.sentAt
-                    : null,
+                sentAt,
 
                 sourceMessageIndex,
                 sourceOrder,
@@ -587,9 +662,27 @@ function buildSnapshot(context) {
         );
     });
 
+    const sortedContacts = [...contacts.values()]
+    .map((contact) => ({
+        ...contact,
+        groups: [...contact.groups.values()].sort(
+            (a, b) => a.name.localeCompare(
+                b.name,
+                undefined,
+                { sensitivity: 'base' },
+            ),
+        ),
+    }))
+    .sort((a, b) => a.name.localeCompare(
+        b.name,
+        undefined,
+        { sensitivity: 'base' },
+    ));
+
     return {
         chatId: context.chatId,
         conversations: sortedConversations,
+        contacts: sortedContacts,
         totalUnread: sortedConversations.reduce(
             (total, conversation) => (
                 total + conversation.unreadCount
@@ -598,6 +691,8 @@ function buildSnapshot(context) {
         ),
     };
 }
+
+
 
 export function createMessageService() {
     const subscribers = new Set();

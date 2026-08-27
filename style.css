@@ -639,6 +639,213 @@
     border-top: 1px solid rgba(32, 34, 42, 0.08);
 }
 
+.phone-ext__contacts {
+    overflow: hidden;
+    color: #20222a;
+    text-align: left;
+    background: #f8f8fa;
+}
+
+.phone-ext__contacts--empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    color: #292b34;
+    text-align: center;
+}
+
+.phone-ext__contacts-empty-icon {
+    width: 68px;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    margin-bottom: 18px;
+    color: #fff;
+    font-size: 27px;
+    background: #efb14e;
+    border-radius: 21px;
+    box-shadow: 0 10px 24px rgba(177, 116, 24, 0.22);
+}
+
+.phone-ext__contacts--empty strong {
+    font-size: 18px;
+}
+
+.phone-ext__contacts--empty p {
+    max-width: 245px;
+    margin: 9px 0 0;
+    color: #71747e;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.phone-ext__contact-list {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.phone-ext__contact-row {
+    width: 100%;
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px 14px;
+    color: #20222a;
+    font: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(32, 34, 42, 0.09);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.phone-ext__contact-row:hover,
+.phone-ext__contact-row:focus-visible {
+    background: rgba(32, 34, 42, 0.055);
+    outline: none;
+}
+
+.phone-ext__contact-row-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.phone-ext__contact-row-name,
+.phone-ext__contact-row-summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.phone-ext__contact-row-name {
+    font-size: 14px;
+    line-height: 1.25;
+}
+
+.phone-ext__contact-row-summary {
+    color: #737680;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.phone-ext__contact-row-chevron {
+    color: #9a9ca4;
+    font-size: 11px;
+}
+
+.phone-ext__contact-detail {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.phone-ext__contact-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 20px;
+    text-align: center;
+    background: #fff;
+    border-bottom: 1px solid rgba(32, 34, 42, 0.08);
+}
+
+.phone-ext__contact-avatar--profile {
+    width: 78px;
+    height: 78px;
+    font-size: 28px;
+}
+
+.phone-ext__contact-hero h2 {
+    max-width: 100%;
+    margin: 12px 0 0;
+    overflow: hidden;
+    font-size: 20px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.phone-ext__contact-hero p {
+    margin: 5px 0 0;
+    color: #777a84;
+    font-size: 11px;
+}
+
+.phone-ext__contact-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+}
+
+.phone-ext__contact-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 13px 8px;
+    background: #fff;
+    border: 1px solid rgba(32, 34, 42, 0.08);
+    border-radius: 13px;
+}
+
+.phone-ext__contact-stat strong {
+    font-size: 19px;
+}
+
+.phone-ext__contact-stat span {
+    color: #797c85;
+    font-size: 10px;
+}
+
+.phone-ext__contact-groups {
+    margin: 0 14px 18px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(32, 34, 42, 0.08);
+    border-radius: 13px;
+}
+
+.phone-ext__contact-groups h3 {
+    margin: 0;
+    padding: 12px 13px 9px;
+    color: #777a84;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.phone-ext__contact-group {
+    min-height: 43px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 13px;
+    font-size: 12px;
+    border-top: 1px solid rgba(32, 34, 42, 0.07);
+}
+
+.phone-ext__contact-group-icon {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    color: #fff;
+    font-size: 11px;
+    background: #efb14e;
+    border-radius: 9px;
+}
+
 @media (max-width: 720px), (pointer: coarse) and (max-width: 1024px) {
     #phone-extension-panel.phone-ext {
         top: 0 !important;
